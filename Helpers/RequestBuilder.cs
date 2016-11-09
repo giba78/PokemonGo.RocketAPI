@@ -273,11 +273,13 @@ namespace PokemonGo.RocketAPI.Helpers
                 MsSinceLastLocationfix = (long)TRandomDevice.Triangular(300, 30000, 10000) //12
             };
             
+            if (_client.AccessToken == null)
+                await PokemonGo.RocketAPI.Rpc.Login.Reauthenticate(_client);
+
             if (_client.AccessToken.AuthTicket == null || _client.AccessToken.IsExpired)
             {
                 if (_client.AccessToken.IsExpired)
                 {
-                    //await _client.AuthSession.Reauthenticate();
                     await PokemonGo.RocketAPI.Rpc.Login.Reauthenticate(_client);
                 }
 

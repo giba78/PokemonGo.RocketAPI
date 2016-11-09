@@ -81,6 +81,9 @@ namespace PokemonGo.RocketAPI.Rpc
 
         private static void SaveAccessToken(AccessToken accessToken)
         {
+            if (accessToken == null || string.IsNullOrEmpty(accessToken.Uid))
+                return;
+
             var fileName = Path.Combine(Directory.GetCurrentDirectory(), "Cache", $"{accessToken.Uid}.json");
 
             File.WriteAllText(fileName, JsonConvert.SerializeObject(accessToken, Formatting.Indented));
@@ -89,7 +92,7 @@ namespace PokemonGo.RocketAPI.Rpc
         public static async Task Reauthenticate(Client client)
         {
             ReauthenticateMutex.WaitOne();
-            if (client.AccessToken.IsExpired)
+            if (null == client.AccessToken || client.AccessToken.IsExpired)
             {
                 AccessToken accessToken = null;
                 var tries = 0;
