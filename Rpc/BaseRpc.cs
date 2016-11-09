@@ -23,15 +23,15 @@ namespace PokemonGo.RocketAPI.Rpc
 
         protected RequestBuilder GetRequestBuilder()
         {
-            return new RequestBuilder(Client, Client.AuthToken, Client.AuthType, Client.CurrentLatitude, Client.CurrentLongitude,
-                    Client.CurrentAltitude, Client.CurrentSpeed, Client.Settings, Client.AuthTicket);
+            return new RequestBuilder(Client, Client.AuthType, Client.CurrentLatitude, Client.CurrentLongitude,
+                    Client.CurrentAltitude, Client.CurrentSpeed, Client.Settings);
         }
 
         protected async Task<TResponsePayload> PostProtoPayload<TRequest, TResponsePayload>(RequestType type,
             IMessage message) where TRequest : IMessage<TRequest>
             where TResponsePayload : IMessage<TResponsePayload>, new()
         {
-            var requestEnvelops = GetRequestBuilder().GetRequestEnvelope(type, message);
+            var requestEnvelops = await GetRequestBuilder().GetRequestEnvelope(type, message);
             return
                 await
                     Client.PokemonHttpClient.PostProtoPayload<TRequest, TResponsePayload>(Client.ApiUrl, requestEnvelops,

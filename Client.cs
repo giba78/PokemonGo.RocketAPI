@@ -87,7 +87,6 @@ namespace PokemonGo.RocketAPI
 
         public IApiFailureStrategy ApiFailure { get; set; }
         public ISettings Settings { get; }
-        public string AuthToken { get; set; }
 
         public double CurrentLatitude { get; internal set; }
         public double CurrentLongitude { get; internal set; }
@@ -97,7 +96,6 @@ namespace PokemonGo.RocketAPI
 
         public AuthType AuthType => Settings.AuthType;
         internal string ApiUrl { get; set; }
-        internal AuthTicket AuthTicket { get; set; }
 
         internal string SettingsHash { get; set; }
         internal long InventoryLastUpdateTimestamp { get; set; }
@@ -107,6 +105,10 @@ namespace PokemonGo.RocketAPI
 
         public Version CurrentApiEmulationVersion { get; set; }
         public Version MinimumClientVersion { get; set; }
+
+        //public POGOLib.Net.Session AuthSession { get; set; }
+        public POGOLib.Official.LoginProviders.ILoginProvider LoginProvider { get; set; }
+        public POGOLib.Official.Net.Authentication.Data.AccessToken AccessToken { get; set; }
 
         private WebProxy InitProxy()
         {

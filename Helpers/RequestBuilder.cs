@@ -12,6 +12,7 @@ using POGOProtos.Enums;
 using Troschuetz.Random;
 using System.Text;
 using static POGOProtos.Networking.Envelopes.Signature.Types;
+using System.Threading.Tasks;
 
 #endregion
 
@@ -20,13 +21,11 @@ namespace PokemonGo.RocketAPI.Helpers
     public class RequestBuilder
     {
         // The next variables are specific to 43.3 client.
-        private static long Client_4330_Unknown25 = -8408506833887075802;
+        private static long Unknown25 = -8408506833887075802;
 
         private static readonly Random RandomDevice = new Random();
         private static readonly TRandom TRandomDevice = new TRandom();
         private readonly double _altitude;
-        private readonly AuthTicket _authTicket;
-        private readonly string _authToken;
         private readonly AuthType _authType;
         private readonly Crypt _crypt;
         private readonly int _horizontalAccuracy;
@@ -39,11 +38,10 @@ namespace PokemonGo.RocketAPI.Helpers
         private float _course = RandomDevice.Next(0, 360);
         private int _token2 = RandomDevice.Next(1, 59);
         
-        public RequestBuilder(Client client, string authToken, AuthType authType, double latitude, double longitude, double altitude, float speed,
-            ISettings settings, AuthTicket authTicket = null)
+        public RequestBuilder(Client client, AuthType authType, double latitude, double longitude, double altitude, float speed,
+            ISettings settings)
         {
             _client = client;
-            _authToken = authToken;
             _authType = authType;
             _latitude = latitude;
             _longitude = longitude;
@@ -59,7 +57,6 @@ namespace PokemonGo.RocketAPI.Helpers
             _horizontalAccuracy = TRandomDevice.Choice(new List<int>(new int[] { 5, 5, 5, 5, 10, 10, 10 }));
 
             _settings = settings;
-            _authTicket = authTicket;
 
             if (SessionHash == null)
             {
@@ -135,9 +132,9 @@ namespace PokemonGo.RocketAPI.Helpers
             return r;
         }
 
-        private RequestEnvelope.Types.PlatformRequest GenerateSignature(IEnumerable<IMessage> requests)
+        private RequestEnvelope.Types.PlatformRequest GenerateSignature(RequestEnvelope requestEnvelope, IEnumerable<IMessage> requests)
         {
-            byte[] ticketBytes = _authTicket != null ? _authTicket.ToByteArray() : Encoding.UTF8.GetBytes(_authToken);
+            var serializedTicket = requestEnvelope.AuthTicket != null ? requestEnvelope.AuthTicket.ToByteArray() : requestEnvelope.AuthInfo.ToByteArray();
 
             // Common device info
             Signature.Types.DeviceInfo deviceInfo = new Signature.Types.DeviceInfo
@@ -165,10 +162,10 @@ namespace PokemonGo.RocketAPI.Helpers
             var sig = new Signature
             {
                 SessionHash = SessionHash,
-                Unknown25 = Client_4330_Unknown25,
+                Unknown25 = Unknown25,
                 Timestamp = (ulong)Utils.GetTime(true),
                 TimestampSinceStart = (ulong)(Utils.GetTime(true) - _client.StartTime),
-                LocationHash1 = Utils.GenerateLocation1(ticketBytes, _latitude, _longitude, _horizontalAccuracy),
+                LocationHash1 = Utils.GenerateLocation1(serializedTicket, _latitude, _longitude, _horizontalAccuracy),
                 LocationHash2 = Utils.GenerateLocation2(_latitude, _longitude, _horizontalAccuracy),
                 DeviceInfo = deviceInfo
             };
@@ -249,7 +246,7 @@ namespace PokemonGo.RocketAPI.Helpers
             sig.LocationFix.Add(locationFix);
 
             foreach (var request in requests)
-                sig.RequestHash.Add(Utils.GenerateRequestHash(ticketBytes, request.ToByteArray()));
+                sig.RequestHash.Add(Utils.GenerateRequestHash(serializedTicket, request.ToByteArray()));
             
             var encryptedSignature = new RequestEnvelope.Types.PlatformRequest
             {
@@ -263,7 +260,7 @@ namespace PokemonGo.RocketAPI.Helpers
             return encryptedSignature;
         }
 
-        public RequestEnvelope GetRequestEnvelope(Request[] customRequests, bool isInitialRequest = false)
+        public async Task<RequestEnvelope> GetRequestEnvelope(Request[] customRequests, bool isInitialRequest = false)
         {
             var e = new RequestEnvelope
             {
@@ -273,34 +270,40 @@ namespace PokemonGo.RocketAPI.Helpers
                 Latitude = _latitude, //7
                 Longitude = _longitude, //8
                 Accuracy = (int)_horizontalAccuracy, //9
-                AuthTicket = _authTicket, //11
                 MsSinceLastLocationfix = (long)TRandomDevice.Triangular(300, 30000, 10000) //12
             };
-
-            if (_authTicket != null && !isInitialRequest)
+            
+            if (_client.AccessToken.AuthTicket == null || _client.AccessToken.IsExpired)
             {
-                e.AuthTicket = _authTicket;
-                e.PlatformRequests.Add(GenerateSignature(customRequests));
+                if (_client.AccessToken.IsExpired)
+                {
+                    //await _client.AuthSession.Reauthenticate();
+                    await PokemonGo.RocketAPI.Rpc.Login.Reauthenticate(_client);
+                }
+
+                e.AuthInfo = new RequestEnvelope.Types.AuthInfo
+                {
+                    Provider = _client.AccessToken.ProviderID,
+                    Token = new RequestEnvelope.Types.AuthInfo.Types.JWT
+                    {
+                        Contents = _client.AccessToken.Token,
+                        Unknown2 = _token2
+                    }
+                };
             }
             else
             {
-                e.AuthInfo = new RequestEnvelope.Types.AuthInfo
-                {
-                    Provider = _authType == AuthType.Google ? "google" : "ptc",
-                    Token = new RequestEnvelope.Types.AuthInfo.Types.JWT
-                    {
-                        Contents = _authToken,
-                        Unknown2 = _token2
-                    }
-                }; //10
+                e.AuthTicket = _client.AccessToken.AuthTicket;
             }
+
+            e.PlatformRequests.Add(GenerateSignature(e, customRequests));
             
             return e;
         }
         
-        public RequestEnvelope GetRequestEnvelope(RequestType type, IMessage message)
+        public async Task<RequestEnvelope> GetRequestEnvelope(RequestType type, IMessage message)
         {
-            return GetRequestEnvelope(new Request[] { new Request
+            return await GetRequestEnvelope(new Request[] { new Request
             {
                 RequestType = type,
                 RequestMessage = message.ToByteString()
