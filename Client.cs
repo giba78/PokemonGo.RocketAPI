@@ -64,11 +64,11 @@ namespace PokemonGo.RocketAPI
                 settings.FirmwareType = iosInfo.FirmwareType;
 
                 // Clear out the android fields.
-                settings.AndroidBoardName = "";
-                settings.AndroidBootloader = "";
-                settings.DeviceModelIdentifier = "";
-                settings.FirmwareTags = "";
-                settings.FirmwareFingerprint = "";
+                settings.AndroidBoardName = null;
+                settings.AndroidBootloader = null;
+                settings.DeviceModelIdentifier = null;
+                settings.FirmwareTags = null;
+                settings.FirmwareFingerprint = null;
 
                 // Now set the client platform to ios
                 Platform = Platform.Ios;
