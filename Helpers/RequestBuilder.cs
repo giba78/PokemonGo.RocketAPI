@@ -274,13 +274,17 @@ namespace PokemonGo.RocketAPI.Helpers
             };
             
             if (_client.AccessToken == null)
-                await PokemonGo.RocketAPI.Rpc.Login.Reauthenticate(_client);
+                await Rpc.Login.Reauthenticate(_client);
+
+            bool isAuthTicketExpired = _client.AccessToken.AuthTicket != null && _client.AccessToken.AuthTicket.ExpireTimestampMs < (ulong)Utils.GetTime(true);
+            if (isAuthTicketExpired)
+                _client.AccessToken.AuthTicket = null;
 
             if (_client.AccessToken.AuthTicket == null || _client.AccessToken.IsExpired)
             {
                 if (_client.AccessToken.IsExpired)
                 {
-                    await PokemonGo.RocketAPI.Rpc.Login.Reauthenticate(_client);
+                    await Rpc.Login.Reauthenticate(_client);
                 }
 
                 e.AuthInfo = new RequestEnvelope.Types.AuthInfo
