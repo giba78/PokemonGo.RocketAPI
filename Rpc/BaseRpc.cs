@@ -32,20 +32,14 @@ namespace PokemonGo.RocketAPI.Rpc
             where TResponsePayload : IMessage<TResponsePayload>, new()
         {
             var requestEnvelops = await GetRequestBuilder().GetRequestEnvelope(type, message);
-            return
-                await
-                    Client.PokemonHttpClient.PostProtoPayload<TRequest, TResponsePayload>(Client, requestEnvelops,
-                        Client.ApiFailure);
+            return await Client.PokemonHttpClient.PostProtoPayload<TRequest, TResponsePayload>(Client, requestEnvelops);
         }
 
         protected async Task<TResponsePayload> PostProtoPayload<TRequest, TResponsePayload>(
             RequestEnvelope requestEnvelope) where TRequest : IMessage<TRequest>
             where TResponsePayload : IMessage<TResponsePayload>, new()
         {
-            return
-                await
-                    Client.PokemonHttpClient.PostProtoPayload<TRequest, TResponsePayload>(Client, requestEnvelope,
-                        Client.ApiFailure);
+            return await Client.PokemonHttpClient.PostProtoPayload<TRequest, TResponsePayload>(Client, requestEnvelope);
         }
 
         protected async Task<Tuple<T1, T2>> PostProtoPayload<TRequest, T1, T2>(RequestEnvelope requestEnvelope)
@@ -136,8 +130,7 @@ namespace PokemonGo.RocketAPI.Rpc
         {
             return
                 await
-                    Client.PokemonHttpClient.PostProtoPayload<TRequest>(Client, requestEnvelope,
-                        Client.ApiFailure, responseTypes);
+                    Client.PokemonHttpClient.PostProtoPayload<TRequest>(Client, requestEnvelope, responseTypes);
         }
 
         protected async Task<ResponseEnvelope> PostProto<TRequest>(RequestEnvelope requestEnvelope)

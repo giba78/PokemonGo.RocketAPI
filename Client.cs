@@ -29,10 +29,9 @@ namespace PokemonGo.RocketAPI
         public Player Player;
         string CaptchaToken;
 
-        public Client(ISettings settings, IApiFailureStrategy apiFailureStrategy)
+        public Client(ISettings settings)
         {
             Settings = settings;
-            ApiFailure = apiFailureStrategy;
             Proxy = InitProxy();
             PokemonHttpClient = new PokemonHttpClient();
             Login = new Rpc.Login(this);
@@ -84,8 +83,7 @@ namespace PokemonGo.RocketAPI
         {
             CaptchaToken = token;
         }
-
-        public IApiFailureStrategy ApiFailure { get; set; }
+        
         public ISettings Settings { get; }
 
         public double CurrentLatitude { get; internal set; }

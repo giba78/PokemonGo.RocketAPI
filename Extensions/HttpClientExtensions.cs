@@ -20,14 +20,6 @@ namespace PokemonGo.RocketAPI.Extensions
         Abort
     }
 
-    public interface IApiFailureStrategy
-    {
-        Task<ApiOperation> HandleApiFailure(RequestEnvelope request, ResponseEnvelope response);
-        void HandleApiSuccess(RequestEnvelope request, ResponseEnvelope response);
-
-        void HandleCaptcha(string challengeUrl, ICaptchaResponseHandler captchaResponseHandler);
-    }
-
     public interface ICaptchaResponseHandler
     {
         void SetCaptchaToken(string captchaToken);
@@ -37,7 +29,6 @@ namespace PokemonGo.RocketAPI.Extensions
     {
         public static async Task<IMessage[]> PostProtoPayload<TRequest>(this System.Net.Http.HttpClient client,
             Client apiClient, RequestEnvelope requestEnvelope,
-            IApiFailureStrategy strategy,
             params Type[] responseTypes) where TRequest : IMessage<TRequest>
         {
             var result = new IMessage[responseTypes.Length];
@@ -50,19 +41,10 @@ namespace PokemonGo.RocketAPI.Extensions
                 }
             }
 
-            ResponseEnvelope response;
-            while ((response = await PerformThrottledRemoteProcedureCall<TRequest>(client, apiClient, requestEnvelope)).Returns.Count !=
-                   responseTypes.Length)
-            {
-                var operation = await strategy.HandleApiFailure(requestEnvelope, response);
-                if (operation == ApiOperation.Abort)
-                {
-                    throw new InvalidResponseException(
-                        $"Expected {responseTypes.Length} responses, but got {response.Returns.Count} responses");
-                }
-            }
+            ResponseEnvelope response = await PerformThrottledRemoteProcedureCall<TRequest>(client, apiClient, requestEnvelope);
 
-            strategy.HandleApiSuccess(requestEnvelope, response);
+            if (response.Returns.Count != requestEnvelope.Requests.Count)
+                throw new InvalidResponseException();
 
             for (var i = 0; i < responseTypes.Length; i++)
             {
@@ -74,28 +56,14 @@ namespace PokemonGo.RocketAPI.Extensions
 
         public static async Task<TResponsePayload> PostProtoPayload<TRequest, TResponsePayload>(
             this System.Net.Http.HttpClient client,
-            Client apiClient, RequestEnvelope requestEnvelope, IApiFailureStrategy strategy)
+            Client apiClient, RequestEnvelope requestEnvelope)
             where TRequest : IMessage<TRequest>
             where TResponsePayload : IMessage<TResponsePayload>, new()
         {
-            Debug.WriteLine($"Requesting {typeof(TResponsePayload).Name}");
-            var response = await PerformThrottledRemoteProcedureCall<TRequest>(client, apiClient, requestEnvelope);
+            ResponseEnvelope response = await PerformThrottledRemoteProcedureCall<TRequest>(client, apiClient, requestEnvelope);
 
-            while (response.Returns.Count == 0)
-            {
-                var operation = await strategy.HandleApiFailure(requestEnvelope, response);
-                if (operation == ApiOperation.Abort)
-                {
-                    break;
-                }
-
-                response = await PerformThrottledRemoteProcedureCall<TRequest>(client, apiClient, requestEnvelope);
-            }
-
-            if (response.Returns.Count == 0)
+            if (response.Returns.Count != requestEnvelope.Requests.Count)
                 throw new InvalidResponseException();
-
-            strategy.HandleApiSuccess(requestEnvelope, response);
 
             //Decode payload
             //todo: multi-payload support
