@@ -75,7 +75,7 @@ namespace PokemonGo.RocketAPI.Helpers
 
         public void GenerateNewHash()
         {
-            var hashBytes = new byte[32];
+            var hashBytes = new byte[16];
 
             RandomDevice.NextBytes(hashBytes);
 
